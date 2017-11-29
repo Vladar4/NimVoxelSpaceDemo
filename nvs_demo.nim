@@ -5,18 +5,16 @@ import
   sdl2/sdl_gfx_primitives, sdl2/sdl_gfx_primitives_font # for text output
 
 
-converter toColor*(u: uint32): Color =
-  ##  0xRRGGBBAA to Color(r, g, b, a)
-  ##
+converter toColor*(u: uint32): Color = # 0xRRGGBBAA to Color(r, g, b, a)
   Color(r: uint8(u shr 24), g: uint8(u shr 16), b: uint8(u shr 8), a: uint8(u))
 
 
 const
   BackgroundColor: Color = 0x9090e0ff'u32
   Details = [0.3, 0.025, 0.02, 0.015, 0.01, 0.005, 0.0015, 0.001, 0.0005, 0.0]
-  DistanceMin = 100
-  DistanceMax = 2000
-  MapSquare = 1024 * 1024
+  DistanceMin = 100       # min draw distance
+  DistanceMax = 2000      # max draw distance
+  MapSquare = 1024 * 1024 # 1024 x 1024 maps
   WindowTitle = "Nim VoxelSpace Demo (SDL2)"
   UpdateInterval = 10 # in ms
   Maps = [
@@ -50,7 +48,7 @@ const
     ("C27W", "D15"),
     ("C28W", "D25"),
     ("C29W", "D16"),
-  ]
+  ] # (color, height) map names tuples
 
 
 type
@@ -67,17 +65,17 @@ type
   Map = tuple
     height: array[MapSquare, uint8]
     color:  array[MapSquare, Color]
-    index:  int
+    index:  int # current map index (in Maps array)
 
 
 var
   camera: Camera
-  info = true
+  info = true # show info panel
   input: Input
   map: Map
   running = false
   window: sdl.Window
-  windowSize = (w: 800, h: 600)
+  windowSize = (w: 800, h: 600) # default window size
   renderer: sdl.Renderer
 
 
@@ -106,16 +104,13 @@ proc loadMap(index: int): bool =
   var
     colorPixels = cast[ptr uint8](colorSurface.pixels)
     heightPixels = cast[ptr uint8](heightSurface.pixels)
-    color: Color
 
   for i in 0..<MapSquare:
     ptrMath:
       # color
-      color = colorPixels[i].uint32.getRGBA(colorSurface.format)
-      map.color[i] = color
+      map.color[i] = colorPixels[i].uint32.getRGBA(colorSurface.format)
       # height
       map.height[i] = heightPixels[i].uint8
-
 
   unlockSurface(colorSurface)
   unlockSurface(heightSurface)
@@ -133,11 +128,13 @@ proc init(): bool =
       sdl.LogCategoryError, "Can't init SDL: %s", sdl.getError)
     return false
 
+  # SDL2_image
   if img.init(img.InitPNG) == 0:
     sdl.logCritical(
       sdl.LogCategoryError, "Can't init SDL_image: %s", img.getError)
     return false
 
+  # SDL window
   window = sdl.createWindow(
     WindowTitle, sdl.WindowPosUndefined, sdl.WindowPosUndefined,
     windowSize.w, windowSize.h, sdl.WindowResizable)
@@ -145,6 +142,7 @@ proc init(): bool =
     sdl.logCritical(
       sdl.LogCategoryError, "Can't create window: %s", sdl.getError)
 
+  # SDL renderer
   renderer = sdl.createRenderer(
     window, -1, sdl.RendererAccelerated or sdl.RendererPresentVsync)
   if renderer == nil:
@@ -177,6 +175,7 @@ proc free() =
 
 proc handleEvent(event: sdl.Event) =
   case event.kind:
+  # key pressed
   of sdl.KeyDown:
     case event.key.keysym.scancode:
     of sdl.ScancodeEscape: # Exit
@@ -213,6 +212,7 @@ proc handleEvent(event: sdl.Event) =
       discard loadMap(index)
     else: discard
 
+  # key released
   of sdl.KeyUp:
     case event.key.keysym.scancode:
     of sdl.ScancodeLeft, sdl.ScancodeA:
@@ -233,17 +233,20 @@ proc handleEvent(event: sdl.Event) =
       input.lookDown = false
     else: discard
 
+  # mouse button pressed
   of sdl.MouseButtonDown:
     input.forwardBackward = 3.0
     input.mousePosition = (event.motion.x, event.motion.y)
     input.mouse = true
 
+  # mouse button released
   of sdl.MouseButtonUp:
     input.forwardBackward = 0
     input.leftRight = 0
     input.upDown = 0
     input.mouse = false
 
+  # mouse moved
   of sdl.MouseMotion:
     if input.mouse and input.forwardBackward != 0:
       let
@@ -253,6 +256,7 @@ proc handleEvent(event: sdl.Event) =
       camera.horizon = diffY * 500
       input.upDown = diffY * 10
 
+  # window resized
   of sdl.WindowEvent:
     case event.window.event:
     of sdl.WindowEventResized:
@@ -291,7 +295,7 @@ proc updateCamera(ms: int) =
     camera.height = mapHeight
 
 
-proc line(x, y1, y2: int, c: Color) =
+proc line(x, y1, y2: int, c: Color) = # draw vertical line
   let y1: int = if y1 < 0: 0 else: y1
   if y1 > y2: return
   discard renderer.setRenderDrawColor(c.r, c.g, c.b, c.a)
@@ -343,6 +347,7 @@ proc render() =
       pLeft.x += dx
       pLeft.y += dy
 
+    # step
     z += dz
     dz += camera.details
   # while z < camera.distance
@@ -355,7 +360,7 @@ template timeDiff(a, b: uint64): int =
 # COUNT
 
 type
-  Count = ref object
+  Count = ref object # for FPS counter
     counter, current, interval: int
     lastTime: uint64
 
@@ -375,7 +380,6 @@ proc update(count: Count) =
     count.lastTime = currTime
 
 
-
 # RUN
 
 proc run() =
@@ -389,7 +393,7 @@ proc run() =
     event: sdl.Event
     fps = newCount()
 
-  gfxPrimitivesSetFont(nil, 0, 0)
+  gfxPrimitivesSetFont(nil, 0, 0) # init SDL2_gfx font
 
   while running:
     timeCurr = sdl.getPerformanceCounter()
