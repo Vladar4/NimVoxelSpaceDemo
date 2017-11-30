@@ -15,6 +15,8 @@ const
   DistanceMin = 100       # min draw distance
   DistanceMax = 2000      # max draw distance
   MapSquare = 1024 * 1024 # 1024 x 1024 maps
+  RendererFlags = sdl.RendererAccelerated
+  WindowFlags = sdl.WindowResizable
   WindowTitle = "Nim VoxelSpace Demo (SDL2)"
   UpdateInterval = 10 # in ms
   Maps = [
@@ -137,17 +139,45 @@ proc init(): bool =
   # SDL window
   window = sdl.createWindow(
     WindowTitle, sdl.WindowPosUndefined, sdl.WindowPosUndefined,
-    windowSize.w, windowSize.h, sdl.WindowResizable)
+    windowSize.w, windowSize.h, WindowFlags)
   if window == nil:
     sdl.logCritical(
       sdl.LogCategoryError, "Can't create window: %s", sdl.getError)
+    return false
+
+  # Driver
+  #
+  # It seems that 3D drivers can't provide good performance in this demo
+  # for some reason, so we prefer software driver is available.
+  var
+    driverSW  = -1
+    driverOGL = -1
+    driverD3D = -1
+    info: sdl.RendererInfo
+  for i in 0..<sdl.getNumRenderDrivers():
+    discard i.getRenderDriverInfo(addr(info))
+    when not declared(release):
+      echo "driver ", $i, ": ", info.name
+    if info.name == "software":
+      driverSW = i
+    elif info.name == "opengl":
+      driverOGL = i
+    elif info.name == "direct3d":
+      driverD3D = i
+  let drivers = [driverSW, driverOGL, driverD3D, -1]
 
   # SDL renderer
-  renderer = sdl.createRenderer(
-    window, -1, sdl.RendererAccelerated or sdl.RendererPresentVsync)
-  if renderer == nil:
-    sdl.logCritical(
-      sdl.LogCategoryError, "Can't create renderer: %s", sdl.getError)
+  for driver in drivers:
+    discard driver.getRenderDriverInfo(addr(info))
+    renderer = sdl.createRenderer(window, driver, RendererFlags)
+    if renderer == nil:
+      sdl.logCritical(
+        sdl.LogCategoryError, "Can't create renderer with %s: %s", info, sdl.getError)
+      if driver == -1: # no more drivers
+        return false
+    else:
+      echo "Renderer created with ", info.name, " driver"
+      break
 
   # Camera
   camera.pos.x = 512.0
