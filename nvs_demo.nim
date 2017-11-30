@@ -1,5 +1,5 @@
 import
-  math,
+  math, os,
   sdl2/sdl,
   sdl2/sdl_image as img, # for image loading
   sdl2/sdl_gfx_primitives, sdl2/sdl_gfx_primitives_font # for text output
@@ -149,22 +149,34 @@ proc init(): bool =
   #
   # It seems that 3D drivers can't provide good performance in this demo
   # for some reason, so we prefer software driver is available.
+  let
+    driverCLName = if paramCount() > 0: paramStr(1) else: ""
+  echo driverCLName
   var
-    driverSW  = -1
-    driverOGL = -1
-    driverD3D = -1
+    driverSW  = -1 # software
+    driverOGL = -1 # opengl
+    driverD3D = -1 # direct3d
+    driverCL  = -1 # command line key
     info: sdl.RendererInfo
   for i in 0..<sdl.getNumRenderDrivers():
     discard i.getRenderDriverInfo(addr(info))
-    when not declared(release):
+    when not defined(release):
       echo "driver ", $i, ": ", info.name
+    if info.name == driverCLName:
+      driverCL = i
+    #
     if info.name == "software":
       driverSW = i
     elif info.name == "opengl":
       driverOGL = i
     elif info.name == "direct3d":
       driverD3D = i
-  let drivers = [driverSW, driverOGL, driverD3D, -1]
+    #
+  var drivers: seq[int] = @[]
+  for driver in [driverCL, driverSW, driverOGL, driverD3D]:
+    if driver != -1:
+      drivers.add(driver)
+  drivers.add(-1)
 
   # SDL renderer
   for driver in drivers:

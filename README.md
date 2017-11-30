@@ -18,6 +18,16 @@ Requires
   * libpng
   * zlib
 
+Driver selection
+----------------
+
+Demo runs with software driver by default. To select different driver,
+run it with driver's name as the first command line param, e.g.:
+
+```
+nvs_demo opengl
+```
+
 Controls
 --------
 
