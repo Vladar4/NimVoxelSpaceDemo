@@ -33,6 +33,7 @@ Controls
 
 | Action        | Control                       |
 |---------------|-------------------------------|
+| FPS limit     | [/]                           |
 | Prev/next map | N/M                           |
 | Fly           | WASD, Arrows, or mouse click  |
 | Pitch         | Q/E                           |

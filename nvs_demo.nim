@@ -14,6 +14,8 @@ const
   Details = [0.3, 0.025, 0.02, 0.015, 0.01, 0.005, 0.0015, 0.001, 0.0005, 0.0]
   DistanceMin = 100       # min draw distance
   DistanceMax = 2000      # max draw distance
+  FpsLimitStep = 30
+  FpsLimitMax = FpsLimitStep * 10
   MapSquare = 1024 * 1024 # 1024 x 1024 maps
   RendererFlags = sdl.RendererAccelerated
   WindowFlags = sdl.WindowResizable
@@ -72,7 +74,8 @@ type
 
 var
   camera: Camera
-  info = true # show info panel
+  fpsLimit = 0  # limit frames per second, disabled if 0
+  info = true   # show info panel
   input: Input
   map: Map
   running = false
@@ -252,6 +255,10 @@ proc handleEvent(event: sdl.Event) =
     of sdl.ScancodeM:
       let index = if map.index < Maps.high: map.index + 1 else: 0
       discard loadMap(index)
+    of sdl.ScancodeLeftBracket:
+      fpsLimit = (fpsLimit - FpsLimitStep).clamp(0, FpsLimitMax)
+    of sdl.ScancodeRightBracket:
+      fpsLimit = (fpsLimit + FpsLimitStep).clamp(0, FpsLimitMax)
     else: discard
 
   # key released
@@ -431,7 +438,7 @@ proc run() =
 
   var
     timePrev, timeCurr: uint64
-    elapsed, lag, updateCounter: int
+    elapsed, lag, msPerFrame, updateCounter: int
     event: sdl.Event
     fps = newCount()
 
@@ -457,6 +464,12 @@ proc run() =
         break
       handleEvent(event)
 
+    # Limit FPS
+    if fpsLimit > 0:
+      msPerFrame = 1000 div fpsLimit
+      if lag < msPerFrame:
+        sdl.delay(uint32(msPerFrame - lag))
+
     # Clear screen
     discard renderer.setRenderDrawColor(BackgroundColor)
     discard renderer.renderClear()
@@ -466,7 +479,8 @@ proc run() =
     if info:
       discard renderer.boxColor(4, 4, 320, 88, 0x60000000'u32)
       discard renderer.stringColor(8, 8,
-        $fps.current & " FPS", 0xffffffff'u32)
+        $fps.current & " FPS, limit: " & $fpsLimit & " (change limit: [/])",
+        0xffffffff'u32)
       discard renderer.stringColor(8, 24,
         "Map " & Maps[map.index][0] & " (prev/next map: N/M)", 0xffffffff'u32)
       discard renderer.stringColor(8, 40,
@@ -477,6 +491,8 @@ proc run() =
         "Draw distance: Z/X, Detail level: 1..0", 0xffffffff'u32)
       discard renderer.stringColor(8, 76,
         "Toggle info: I", 0xffffffff'u32)
+    else: # just show FPS
+      discard renderer.stringColor(8, 8, $fps.current & " FPS", 0xffffffff'u32)
     renderer.renderPresent()
 
     # FPS
