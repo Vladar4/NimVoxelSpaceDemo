@@ -4,11 +4,8 @@ import
   sdl2/sdl_image as img, # for image loading
   sdl2/sdl_gfx_primitives, sdl2/sdl_gfx_primitives_font # for text output
 
-
 converter toColor*(u: uint32): Color = # 0xRRGGBBAA to Color(r, g, b, a)
   Color(r: uint8(u shr 24), g: uint8(u shr 16), b: uint8(u shr 8), a: uint8(u))
-
-
 const
   BackgroundColor: Color = 0x9090e0ff'u32
   Details = [0.3, 0.025, 0.02, 0.015, 0.01, 0.005, 0.0015, 0.001, 0.0005, 0.0]
@@ -81,6 +78,7 @@ var
   running = false
   window: sdl.Window
   windowSize = (w: 800, h: 600) # default window size
+  renderScale = 1.0
   renderer: sdl.Renderer
 
 
